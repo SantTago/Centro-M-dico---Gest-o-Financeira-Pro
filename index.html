@@ -1,42 +1,355 @@
 
 <!DOCTYPE html>
 <html lang="pt-BR">
-  <head>
+<head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Centro Médico - Financeiro</title>
+    <title>Centro Médico - Gestão Financeira</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
-      body { font-family: 'Inter', sans-serif; margin: 0; padding: 0; background: #f8fafc; }
-      #root:empty {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        height: 100vh;
-        font-weight: bold;
-        color: #2563eb;
-      }
-      #root:empty::after {
-        content: "🏥 Iniciando Sistema...";
-      }
-      ::-webkit-scrollbar { width: 8px; }
-      ::-webkit-scrollbar-track { background: #f1f1f1; }
-      ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-      ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; margin: 0; }
+        .glass { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); }
+        #root:empty::before {
+            content: "🏥 Carregando Sistema...";
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            font-weight: 800;
+            color: #1d4ed8;
+            font-size: 1.25rem;
+        }
+        input, select { transition: all 0.2s ease; }
+        input:focus, select:focus { transform: translateY(-1px); box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
     </style>
-  <script type="importmap">
+    <script type="importmap">
 {
   "imports": {
-    "react": "https://esm.sh/react@^19.2.4",
+    "react": "https://esm.sh/react@19.0.0",
+    "react-dom/client": "https://esm.sh/react-dom@19.0.0/client",
     "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
-    "react/": "https://esm.sh/react@^19.2.4/",
-    "recharts": "https://esm.sh/recharts@^3.7.0"
+    "react/": "https://esm.sh/react@^19.2.4/"
   }
 }
 </script>
 </head>
-  <body class="bg-slate-50 text-slate-900">
+<body>
     <div id="root"></div>
-  </body>
+
+    <script type="module">
+        import React, { useState, useEffect, useMemo, useRef } from 'react';
+        import { createRoot } from 'react-dom/client';
+
+        // --- CONSTANTES E UTILITÁRIOS ---
+        const STORAGE_KEY = 'cm_gestao_v3_final';
+        const AUTH_KEY = 'cm_auth_session';
+
+        const generateId = () => 'id_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        const getToday = () => new Date().toISOString().split('T')[0];
+
+        // --- COMPONENTE LOGIN ---
+        const Login = ({ onLogin }) => {
+            const [user, setUser] = useState('');
+            const [pass, setPass] = useState('');
+            const [err, setErr] = useState(false);
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                if (user === 'centromedico' && pass === 'miguel2406') {
+                    onLogin();
+                } else {
+                    setErr(true);
+                    setTimeout(() => setErr(false), 3000);
+                }
+            };
+
+            return (
+                <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-700 via-indigo-800 to-slate-900 p-4">
+                    <div className="bg-white p-8 md:p-12 rounded-[2.5rem] shadow-2xl w-full max-w-md transform transition-all hover:scale-[1.01]">
+                        <div className="text-center mb-10">
+                            <div className="w-24 h-24 bg-blue-600 rounded-3xl flex items-center justify-center text-5xl shadow-2xl mx-auto mb-6">🏥</div>
+                            <h1 className="text-3xl font-black text-slate-800 tracking-tighter">CENTRO MÉDICO</h1>
+                            <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest mt-2">Sistema de Gestão Financeira</p>
+                        </div>
+                        <form onSubmit={handleSubmit} className="space-y-5">
+                            <input type="text" placeholder="Usuário" value={user} onChange={e => setUser(e.target.value)} className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold outline-none focus:border-blue-500" required />
+                            <input type="password" placeholder="Senha" value={pass} onChange={e => setPass(e.target.value)} className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold outline-none focus:border-blue-500" required />
+                            {err && <div className="text-red-500 text-center font-bold text-sm animate-pulse">Credenciais Inválidas!</div>}
+                            <button type="submit" className="w-full py-5 bg-blue-600 text-white font-black rounded-2xl shadow-xl hover:bg-blue-700 active:scale-95 transition-all uppercase tracking-widest">Acessar Painel</button>
+                        </form>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- COMPONENTE DASHBOARD ---
+        const Dashboard = ({ onLogout }) => {
+            const [data, setData] = useState({ professionals: [], receipts: [], products: [] });
+            const [isLoaded, setIsLoaded] = useState(false);
+            const [currentDate, setCurrentDate] = useState(getToday());
+            const [activeModal, setActiveModal] = useState(null);
+            const [tab, setTab] = useState('recebimento');
+
+            // Carregamento
+            useEffect(() => {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                if (saved) {
+                    try { setData(JSON.parse(saved)); } catch (e) { console.error(e); }
+                }
+                setIsLoaded(true);
+            }, []);
+
+            // Persistência
+            useEffect(() => {
+                if (isLoaded) localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            }, [data, isLoaded]);
+
+            // Cálculos
+            const dailyRecs = useMemo(() => 
+                data.receipts.filter(r => r.date.startsWith(currentDate))
+                .sort((a,b) => b.date.localeCompare(a.date))
+            , [data.receipts, currentDate]);
+
+            const totals = useMemo(() => {
+                const bruto = dailyRecs.reduce((s, r) => s + r.gross, 0);
+                const liq = dailyRecs.reduce((s, r) => s + r.net, 0);
+                return { bruto, liq };
+            }, [dailyRecs]);
+
+            const addReceipt = (e) => {
+                e.preventDefault();
+                const fd = new FormData(e.target);
+                const profId = fd.get('prof');
+                const prof = data.professionals.find(p => p.id === profId);
+                const gross = parseFloat(fd.get('val'));
+                
+                if (!prof || isNaN(gross)) return alert("Dados inválidos");
+
+                const comissao = prof.perc === 100 ? 0 : gross * (prof.perc / 100);
+                const now = new Date();
+                const hora = now.toTimeString().split(' ')[0];
+
+                const newRec = {
+                    id: generateId(),
+                    date: `${currentDate}T${hora}`,
+                    profName: prof.name,
+                    gross: gross,
+                    net: gross - comissao,
+                    service: fd.get('service'),
+                    method: fd.get('method')
+                };
+
+                setData(prev => ({ ...prev, receipts: [...prev.receipts, newRec] }));
+                e.target.reset();
+            };
+
+            const addProf = (e) => {
+                e.preventDefault();
+                const fd = new FormData(e.target);
+                const newP = {
+                    id: generateId(),
+                    name: fd.get('name'),
+                    spec: fd.get('spec'),
+                    perc: parseInt(fd.get('perc')) || 100
+                };
+                setData(prev => ({ ...prev, professionals: [...prev.professionals, newP] }));
+                setActiveModal(null);
+            };
+
+            if (!isLoaded) return null;
+
+            return (
+                <div className="min-h-screen pb-20">
+                    {/* Top Bar */}
+                    <header className="bg-white border-b sticky top-0 z-50 px-6 py-4 flex justify-between items-center shadow-sm">
+                        <div className="flex items-center gap-3">
+                            <span className="text-3xl">🏥</span>
+                            <div>
+                                <h2 className="text-lg font-black text-blue-700 leading-none">CENTRO MÉDICO</h2>
+                                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Painel Financeiro</p>
+                            </div>
+                        </div>
+                        <div className="flex gap-2">
+                            <button onClick={() => {
+                                const blob = new Blob([JSON.stringify(data)], {type:'application/json'});
+                                const url = URL.createObjectURL(blob);
+                                const a = document.createElement('a'); a.href = url; a.download = `backup_cm_${currentDate}.json`; a.click();
+                            }} className="text-[10px] font-black bg-blue-50 text-blue-600 px-3 py-2 rounded-lg border border-blue-100 uppercase">Backup</button>
+                            <button onClick={onLogout} className="text-[10px] font-black bg-slate-100 text-slate-500 px-3 py-2 rounded-lg uppercase">Sair</button>
+                        </div>
+                    </header>
+
+                    <main className="max-w-7xl mx-auto p-4 md:p-8 space-y-6">
+                        
+                        {/* Seletor de Data e Cards */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <section className="bg-white p-6 rounded-[2rem] border shadow-sm flex flex-col items-center justify-center space-y-2">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Data de Referência</p>
+                                <input type="date" value={currentDate} onChange={e => setCurrentDate(e.target.value)} className="text-2xl font-black text-slate-700 outline-none cursor-pointer hover:text-blue-600 transition-colors" />
+                            </section>
+                            
+                            <div className="bg-blue-600 p-8 rounded-[2rem] text-white shadow-xl flex flex-col justify-center">
+                                <p className="text-[10px] font-bold uppercase opacity-70 tracking-widest">Valor Bruto Hoje</p>
+                                <p className="text-4xl font-black mt-1">R$ {totals.bruto.toLocaleString('pt-BR', {minimumFractionDigits:2})}</p>
+                            </div>
+                            
+                            <div className="bg-emerald-600 p-8 rounded-[2rem] text-white shadow-xl flex flex-col justify-center">
+                                <p className="text-[10px] font-bold uppercase opacity-70 tracking-widest">Líquido Clínica Hoje</p>
+                                <p className="text-4xl font-black mt-1">R$ {totals.liq.toLocaleString('pt-BR', {minimumFractionDigits:2})}</p>
+                            </div>
+                        </div>
+
+                        {/* Formulário de Lançamento */}
+                        <section className="bg-white rounded-[2.5rem] shadow-sm border overflow-hidden">
+                            <div className="flex bg-slate-50 border-b">
+                                <button onClick={() => setTab('recebimento')} className={`flex-1 py-5 font-black text-xs tracking-widest uppercase transition-all ${tab === 'recebimento' ? 'bg-white text-emerald-600 border-b-4 border-emerald-500' : 'text-slate-400'}`}>📥 Novo Recebimento</button>
+                                <button onClick={() => setTab('despesa')} className={`flex-1 py-5 font-black text-xs tracking-widest uppercase transition-all ${tab === 'despesa' ? 'bg-white text-rose-600 border-b-4 border-rose-500' : 'text-slate-400'}`}>💸 Nova Despesa</button>
+                            </div>
+                            <div className="p-8">
+                                {tab === 'recebimento' ? (
+                                    <form onSubmit={addReceipt} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                                        <div className="space-y-1">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Valor Bruto</label>
+                                            <input name="val" type="number" step="0.01" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold" required placeholder="0,00" />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Médico/Profissional</label>
+                                            <select name="prof" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold" required>
+                                                <option value="">Selecione...</option>
+                                                {data.professionals.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                            </select>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Atendimento</label>
+                                            <select name="service" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold">
+                                                <option value="Consulta">Consulta</option>
+                                                <option value="Procedimento">Procedimento</option>
+                                                <option value="Retorno">Retorno</option>
+                                                <option value="Cirurgia">Cirurgia</option>
+                                            </select>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Meio Pgto</label>
+                                            <select name="method" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold">
+                                                <option value="PIX">PIX</option>
+                                                <option value="Dinheiro">Dinheiro</option>
+                                                <option value="Cartão">Cartão</option>
+                                                <option value="Unimed">Unimed</option>
+                                            </select>
+                                        </div>
+                                        <div className="flex items-end">
+                                            <button type="submit" className="w-full py-4 bg-emerald-600 text-white font-black rounded-2xl shadow-lg uppercase text-xs tracking-widest hover:bg-emerald-700 transition-all">Salvar</button>
+                                        </div>
+                                    </form>
+                                ) : (
+                                    <div className="text-center py-10">
+                                        <p className="text-slate-400 font-bold italic">Módulo de despesas em desenvolvimento...</p>
+                                    </div>
+                                )}
+                            </div>
+                        </section>
+
+                        {/* Histórico - ORDEM SOLICITADA: DATA, HORA, PROFISSIONAL, VALOR BRUTO, ATENDIMENTO */}
+                        <section className="bg-white rounded-[2.5rem] shadow-sm border overflow-hidden">
+                            <div className="p-8 border-b bg-slate-50/50 flex justify-between items-center">
+                                <h3 className="font-black text-slate-800 uppercase tracking-tighter">Histórico de Recebimentos</h3>
+                            </div>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left border-collapse min-w-[900px]">
+                                    <thead>
+                                        <tr className="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                            <th className="px-8 py-5">DATA</th>
+                                            <th className="px-8 py-5">HORA</th>
+                                            <th className="px-8 py-5">PROFISSIONAL</th>
+                                            <th className="px-8 py-5">VALOR BRUTO</th>
+                                            <th className="px-8 py-5">ATENDIMENTO</th>
+                                            <th className="px-8 py-5">PAGAMENTO</th>
+                                            <th className="px-8 py-5 text-emerald-600">LÍQ. CLÍNICA</th>
+                                            <th className="px-8 py-5"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-50">
+                                        {dailyRecs.length === 0 ? (
+                                            <tr><td colSpan={8} className="p-20 text-center text-slate-300 font-black italic">Sem registros para esta data.</td></tr>
+                                        ) : (
+                                            dailyRecs.map(r => (
+                                                <tr key={r.id} className="hover:bg-slate-50 transition-colors text-sm">
+                                                    <td className="px-8 py-5 font-bold text-slate-600">{new Date(r.date).toLocaleDateString('pt-BR')}</td>
+                                                    <td className="px-8 py-5 font-black text-blue-600">{r.date.split('T')[1]?.substring(0,5)}</td>
+                                                    <td className="px-8 py-5 font-black text-slate-800">{r.profName}</td>
+                                                    <td className="px-8 py-5 font-black text-lg">R$ {r.gross.toFixed(2)}</td>
+                                                    <td className="px-8 py-5">
+                                                        <span className="px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full text-[10px] font-black uppercase tracking-tighter">{r.service}</span>
+                                                    </td>
+                                                    <td className="px-8 py-5 font-bold text-slate-400 text-[10px] uppercase">{r.method}</td>
+                                                    <td className="px-8 py-5 font-black text-emerald-600">R$ {r.net.toFixed(2)}</td>
+                                                    <td className="px-8 py-5">
+                                                        <button onClick={() => { if(confirm("Excluir?")) setData(prev => ({...prev, receipts: prev.receipts.filter(x => x.id !== r.id)})) }} className="text-slate-300 hover:text-red-500 transition-colors text-lg">🗑️</button>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </section>
+
+                        {/* Botões de Ação */}
+                        <div className="flex flex-wrap gap-4 justify-center py-10">
+                            <button onClick={() => setActiveModal('prof')} className="px-8 py-4 bg-indigo-600 text-white font-black rounded-2xl shadow-xl hover:scale-105 transition-all uppercase text-xs tracking-widest">+ Profissional</button>
+                            <button onClick={() => { if(confirm("Deseja apagar TODOS os dados?")) { localStorage.removeItem(STORAGE_KEY); location.reload(); } }} className="px-8 py-4 bg-rose-100 text-rose-600 font-black rounded-2xl shadow-sm hover:bg-rose-600 hover:text-white transition-all uppercase text-xs tracking-widest">Limpar Banco</button>
+                        </div>
+                    </main>
+
+                    {/* Modal Novo Profissional */}
+                    {activeModal === 'prof' && (
+                        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-md">
+                            <div className="bg-white rounded-[2.5rem] w-full max-w-sm p-10 shadow-2xl animate-in zoom-in duration-200">
+                                <div className="flex justify-between items-center mb-8">
+                                    <h2 className="text-2xl font-black text-indigo-700 tracking-tighter">Novo Profissional</h2>
+                                    <button onClick={() => setActiveModal(null)} className="text-3xl font-light text-slate-300">&times;</button>
+                                </div>
+                                <form onSubmit={addProf} className="space-y-4">
+                                    <input name="name" placeholder="Nome Completo" className="w-full p-4 border-2 border-slate-100 rounded-2xl font-bold" required />
+                                    <input name="spec" placeholder="Especialidade" className="w-full p-4 border-2 border-slate-100 rounded-2xl font-bold" required />
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Comissão (%)</label>
+                                        <input name="perc" type="number" placeholder="100 para sem comissão" className="w-full p-4 border-2 border-slate-100 rounded-2xl font-black text-center text-2xl text-blue-600" defaultValue="100" required />
+                                    </div>
+                                    <button type="submit" className="w-full py-5 bg-indigo-600 text-white font-black rounded-2xl shadow-lg uppercase tracking-widest mt-4">Cadastrar</button>
+                                </form>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        // --- COMPONENTE APP ---
+        const App = () => {
+            const [auth, setAuth] = useState(false);
+
+            useEffect(() => {
+                if (localStorage.getItem(AUTH_KEY) === 'true') setAuth(true);
+            }, []);
+
+            const login = () => {
+                localStorage.setItem(AUTH_KEY, 'true');
+                setAuth(true);
+            };
+
+            const logout = () => {
+                localStorage.removeItem(AUTH_KEY);
+                setAuth(false);
+            };
+
+            return auth ? <Dashboard onLogout={logout} /> : <Login onLogin={login} />;
+        };
+
+        // --- INICIALIZAÇÃO ---
+        const root = createRoot(document.getElementById('root'));
+        root.render(React.createElement(App));
+    </script>
+</body>
 </html>
