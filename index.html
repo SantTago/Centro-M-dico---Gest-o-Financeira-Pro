@@ -3,32 +3,35 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Centro Médico - Gestão Financeira</title>
+    <!-- Bibliotecas de Alta Compatibilidade -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; margin: 0; }
-        .glass { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); }
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; margin: 0; -webkit-tap-highlight-color: transparent; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .animate-fade-in { animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         #root:empty::before {
-            content: "🏥 Carregando Sistema...";
+            content: "🏥 Iniciando Centro Médico...";
             display: flex;
             align-items: center;
             justify-content: center;
             height: 100vh;
             font-weight: 800;
-            color: #1d4ed8;
-            font-size: 1.25rem;
+            color: #2563eb;
+            font-size: 1.2rem;
+            background: white;
         }
-        input, select { transition: all 0.2s ease; }
-        input:focus, select:focus { transform: translateY(-1px); box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
     </style>
-    <script type="importmap">
+<script type="importmap">
 {
   "imports": {
-    "react": "https://esm.sh/react@19.0.0",
-    "react-dom/client": "https://esm.sh/react-dom@19.0.0/client",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+    "react": "https://esm.sh/react@^19.2.4",
     "react/": "https://esm.sh/react@^19.2.4/"
   }
 }
@@ -37,46 +40,64 @@
 <body>
     <div id="root"></div>
 
-    <script type="module">
-        import React, { useState, useEffect, useMemo, useRef } from 'react';
-        import { createRoot } from 'react-dom/client';
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
 
-        // --- CONSTANTES E UTILITÁRIOS ---
-        const STORAGE_KEY = 'cm_gestao_v3_final';
-        const AUTH_KEY = 'cm_auth_session';
+        const STORAGE_KEY = 'cm_gestao_v4_master';
+        const AUTH_KEY = 'cm_session_v4';
 
-        const generateId = () => 'id_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-        const getToday = () => new Date().toISOString().split('T')[0];
+        // Funções Utilitárias de Compatibilidade
+        const generateSafeId = () => 'id_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        const getTodayIso = () => {
+            const d = new Date();
+            const z = d.getTimezoneOffset() * 60000;
+            const local = new Date(d - z);
+            return local.toISOString().split('T')[0];
+        };
 
         // --- COMPONENTE LOGIN ---
-        const Login = ({ onLogin }) => {
+        const Login = ({ onLoginSuccess }) => {
             const [user, setUser] = useState('');
             const [pass, setPass] = useState('');
-            const [err, setErr] = useState(false);
+            const [error, setError] = useState(false);
 
-            const handleSubmit = (e) => {
+            const handleLogin = (e) => {
                 e.preventDefault();
                 if (user === 'centromedico' && pass === 'miguel2406') {
-                    onLogin();
+                    onLoginSuccess();
                 } else {
-                    setErr(true);
-                    setTimeout(() => setErr(false), 3000);
+                    setError(true);
+                    setTimeout(() => setError(false), 3000);
                 }
             };
 
             return (
-                <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-700 via-indigo-800 to-slate-900 p-4">
-                    <div className="bg-white p-8 md:p-12 rounded-[2.5rem] shadow-2xl w-full max-w-md transform transition-all hover:scale-[1.01]">
-                        <div className="text-center mb-10">
-                            <div className="w-24 h-24 bg-blue-600 rounded-3xl flex items-center justify-center text-5xl shadow-2xl mx-auto mb-6">🏥</div>
-                            <h1 className="text-3xl font-black text-slate-800 tracking-tighter">CENTRO MÉDICO</h1>
-                            <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest mt-2">Sistema de Gestão Financeira</p>
+                <div className="min-h-screen flex items-center justify-center bg-blue-600 p-4">
+                    <div className="bg-white p-8 rounded-[2rem] shadow-2xl w-full max-w-md animate-fade-in">
+                        <div className="text-center mb-8">
+                            <div className="text-5xl mb-4">🏥</div>
+                            <h1 className="text-2xl font-black text-slate-800 uppercase tracking-tighter">Centro Médico</h1>
+                            <p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest">Acesso Restrito</p>
                         </div>
-                        <form onSubmit={handleSubmit} className="space-y-5">
-                            <input type="text" placeholder="Usuário" value={user} onChange={e => setUser(e.target.value)} className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold outline-none focus:border-blue-500" required />
-                            <input type="password" placeholder="Senha" value={pass} onChange={e => setPass(e.target.value)} className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold outline-none focus:border-blue-500" required />
-                            {err && <div className="text-red-500 text-center font-bold text-sm animate-pulse">Credenciais Inválidas!</div>}
-                            <button type="submit" className="w-full py-5 bg-blue-600 text-white font-black rounded-2xl shadow-xl hover:bg-blue-700 active:scale-95 transition-all uppercase tracking-widest">Acessar Painel</button>
+                        <form onSubmit={handleLogin} className="space-y-4">
+                            <input 
+                                type="text" 
+                                placeholder="Usuário" 
+                                value={user}
+                                onChange={e => setUser(e.target.value)}
+                                className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold focus:border-blue-500 outline-none" 
+                                required 
+                            />
+                            <input 
+                                type="password" 
+                                placeholder="Senha" 
+                                value={pass}
+                                onChange={e => setPass(e.target.value)}
+                                className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold focus:border-blue-500 outline-none" 
+                                required 
+                            />
+                            {error && <p className="text-red-500 text-center font-bold text-xs">Login Incorreto!</p>}
+                            <button type="submit" className="w-full py-5 bg-blue-600 text-white font-black rounded-2xl shadow-lg hover:bg-blue-700 active:scale-95 transition-all">ENTRAR NO SISTEMA</button>
                         </form>
                     </div>
                 </div>
@@ -85,53 +106,58 @@
 
         // --- COMPONENTE DASHBOARD ---
         const Dashboard = ({ onLogout }) => {
-            const [data, setData] = useState({ professionals: [], receipts: [], products: [] });
             const [isLoaded, setIsLoaded] = useState(false);
-            const [currentDate, setCurrentDate] = useState(getToday());
+            const [currentDate, setCurrentDate] = useState(getTodayIso());
+            const [professionals, setProfessionals] = useState([]);
+            const [receipts, setReceipts] = useState([]);
             const [activeModal, setActiveModal] = useState(null);
-            const [tab, setTab] = useState('recebimento');
 
-            // Carregamento
+            // Carregamento Seguro
             useEffect(() => {
-                const saved = localStorage.getItem(STORAGE_KEY);
-                if (saved) {
-                    try { setData(JSON.parse(saved)); } catch (e) { console.error(e); }
+                try {
+                    const saved = localStorage.getItem(STORAGE_KEY);
+                    if (saved) {
+                        const parsed = JSON.parse(saved);
+                        if (parsed.professionals) setProfessionals(parsed.professionals);
+                        if (parsed.receipts) setReceipts(parsed.receipts);
+                    }
+                } catch (e) {
+                    console.error("Falha ao ler dados", e);
+                } finally {
+                    setIsLoaded(true);
                 }
-                setIsLoaded(true);
             }, []);
 
-            // Persistência
+            // Persistência Automática
             useEffect(() => {
-                if (isLoaded) localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-            }, [data, isLoaded]);
+                if (isLoaded) {
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify({ professionals, receipts }));
+                }
+            }, [professionals, receipts, isLoaded]);
 
             // Cálculos
-            const dailyRecs = useMemo(() => 
-                data.receipts.filter(r => r.date.startsWith(currentDate))
-                .sort((a,b) => b.date.localeCompare(a.date))
-            , [data.receipts, currentDate]);
+            const dailyData = useMemo(() => {
+                const list = receipts.filter(r => r.date.startsWith(currentDate))
+                                     .sort((a,b) => b.date.localeCompare(a.date));
+                const bruto = list.reduce((s, r) => s + (r.gross || 0), 0);
+                const liq = list.reduce((s, r) => s + (r.net || 0), 0);
+                return { list, bruto, liq };
+            }, [receipts, currentDate]);
 
-            const totals = useMemo(() => {
-                const bruto = dailyRecs.reduce((s, r) => s + r.gross, 0);
-                const liq = dailyRecs.reduce((s, r) => s + r.net, 0);
-                return { bruto, liq };
-            }, [dailyRecs]);
-
-            const addReceipt = (e) => {
+            const handleAddReceipt = (e) => {
                 e.preventDefault();
                 const fd = new FormData(e.target);
-                const profId = fd.get('prof');
-                const prof = data.professionals.find(p => p.id === profId);
+                const pId = fd.get('prof');
+                const prof = professionals.find(p => p.id === pId);
                 const gross = parseFloat(fd.get('val'));
-                
-                if (!prof || isNaN(gross)) return alert("Dados inválidos");
+
+                if (!prof || isNaN(gross)) return alert("Selecione um profissional e valor válido");
 
                 const comissao = prof.perc === 100 ? 0 : gross * (prof.perc / 100);
-                const now = new Date();
-                const hora = now.toTimeString().split(' ')[0];
+                const hora = new Date().toLocaleTimeString('pt-BR', { hour12: false });
 
                 const newRec = {
-                    id: generateId(),
+                    id: generateSafeId(),
                     date: `${currentDate}T${hora}`,
                     profName: prof.name,
                     gross: gross,
@@ -140,152 +166,128 @@
                     method: fd.get('method')
                 };
 
-                setData(prev => ({ ...prev, receipts: [...prev.receipts, newRec] }));
+                setReceipts(prev => [...prev, newRec]);
                 e.target.reset();
             };
 
-            const addProf = (e) => {
+            const handleAddProf = (e) => {
                 e.preventDefault();
                 const fd = new FormData(e.target);
                 const newP = {
-                    id: generateId(),
+                    id: generateSafeId(),
                     name: fd.get('name'),
-                    spec: fd.get('spec'),
                     perc: parseInt(fd.get('perc')) || 100
                 };
-                setData(prev => ({ ...prev, professionals: [...prev.professionals, newP] }));
+                setProfessionals(prev => [...prev, newP]);
                 setActiveModal(null);
             };
 
             if (!isLoaded) return null;
 
             return (
-                <div className="min-h-screen pb-20">
-                    {/* Top Bar */}
-                    <header className="bg-white border-b sticky top-0 z-50 px-6 py-4 flex justify-between items-center shadow-sm">
-                        <div className="flex items-center gap-3">
-                            <span className="text-3xl">🏥</span>
-                            <div>
-                                <h2 className="text-lg font-black text-blue-700 leading-none">CENTRO MÉDICO</h2>
-                                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Painel Financeiro</p>
-                            </div>
+                <div className="min-h-screen bg-slate-50 pb-24 animate-fade-in">
+                    {/* Header */}
+                    <header className="bg-white border-b p-4 flex justify-between items-center sticky top-0 z-50 shadow-sm">
+                        <div className="flex items-center gap-2">
+                            <span className="text-2xl">🏥</span>
+                            <h2 className="font-black text-blue-700 text-sm md:text-lg">CENTRO MÉDICO</h2>
                         </div>
                         <div className="flex gap-2">
                             <button onClick={() => {
-                                const blob = new Blob([JSON.stringify(data)], {type:'application/json'});
+                                const dataStr = JSON.stringify({ professionals, receipts });
+                                const blob = new Blob([dataStr], {type: "application/json"});
                                 const url = URL.createObjectURL(blob);
-                                const a = document.createElement('a'); a.href = url; a.download = `backup_cm_${currentDate}.json`; a.click();
-                            }} className="text-[10px] font-black bg-blue-50 text-blue-600 px-3 py-2 rounded-lg border border-blue-100 uppercase">Backup</button>
-                            <button onClick={onLogout} className="text-[10px] font-black bg-slate-100 text-slate-500 px-3 py-2 rounded-lg uppercase">Sair</button>
+                                const a = document.createElement("a");
+                                a.href = url; a.download = `backup_cm_${currentDate}.json`; a.click();
+                            }} className="text-[10px] font-black px-3 py-2 bg-blue-50 text-blue-600 rounded-lg border border-blue-100">BACKUP</button>
+                            <button onClick={onLogout} className="text-[10px] font-black px-3 py-2 bg-slate-100 text-slate-500 rounded-lg">SAIR</button>
                         </div>
                     </header>
 
-                    <main className="max-w-7xl mx-auto p-4 md:p-8 space-y-6">
+                    <main className="max-w-6xl mx-auto p-4 space-y-4">
                         
-                        {/* Seletor de Data e Cards */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <section className="bg-white p-6 rounded-[2rem] border shadow-sm flex flex-col items-center justify-center space-y-2">
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Data de Referência</p>
-                                <input type="date" value={currentDate} onChange={e => setCurrentDate(e.target.value)} className="text-2xl font-black text-slate-700 outline-none cursor-pointer hover:text-blue-600 transition-colors" />
-                            </section>
-                            
-                            <div className="bg-blue-600 p-8 rounded-[2rem] text-white shadow-xl flex flex-col justify-center">
-                                <p className="text-[10px] font-bold uppercase opacity-70 tracking-widest">Valor Bruto Hoje</p>
-                                <p className="text-4xl font-black mt-1">R$ {totals.bruto.toLocaleString('pt-BR', {minimumFractionDigits:2})}</p>
+                        {/* Seletor de Data e Resumo */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="bg-white p-4 rounded-3xl border shadow-sm flex flex-col items-center justify-center">
+                                <p className="text-[9px] font-black text-slate-400 uppercase">Consultar Data</p>
+                                <input 
+                                    type="date" 
+                                    value={currentDate} 
+                                    onChange={e => setCurrentDate(e.target.value)}
+                                    className="text-xl font-black text-slate-700 outline-none bg-transparent cursor-pointer"
+                                />
                             </div>
-                            
-                            <div className="bg-emerald-600 p-8 rounded-[2rem] text-white shadow-xl flex flex-col justify-center">
-                                <p className="text-[10px] font-bold uppercase opacity-70 tracking-widest">Líquido Clínica Hoje</p>
-                                <p className="text-4xl font-black mt-1">R$ {totals.liq.toLocaleString('pt-BR', {minimumFractionDigits:2})}</p>
+                            <div className="bg-blue-600 p-6 rounded-3xl text-white shadow-lg">
+                                <p className="text-[10px] font-bold uppercase opacity-80 tracking-widest">Bruto Hoje</p>
+                                <p className="text-3xl font-black">R$ {dailyData.bruto.toFixed(2)}</p>
+                            </div>
+                            <div className="bg-emerald-600 p-6 rounded-3xl text-white shadow-lg">
+                                <p className="text-[10px] font-bold uppercase opacity-80 tracking-widest">Líq. Clínica</p>
+                                <p className="text-3xl font-black">R$ {dailyData.liq.toFixed(2)}</p>
                             </div>
                         </div>
 
-                        {/* Formulário de Lançamento */}
-                        <section className="bg-white rounded-[2.5rem] shadow-sm border overflow-hidden">
-                            <div className="flex bg-slate-50 border-b">
-                                <button onClick={() => setTab('recebimento')} className={`flex-1 py-5 font-black text-xs tracking-widest uppercase transition-all ${tab === 'recebimento' ? 'bg-white text-emerald-600 border-b-4 border-emerald-500' : 'text-slate-400'}`}>📥 Novo Recebimento</button>
-                                <button onClick={() => setTab('despesa')} className={`flex-1 py-5 font-black text-xs tracking-widest uppercase transition-all ${tab === 'despesa' ? 'bg-white text-rose-600 border-b-4 border-rose-500' : 'text-slate-400'}`}>💸 Nova Despesa</button>
+                        {/* Formulário Lançamento */}
+                        <section className="bg-white rounded-[2rem] border shadow-sm overflow-hidden">
+                            <div className="bg-slate-50 p-4 border-b">
+                                <h3 className="text-xs font-black text-slate-500 uppercase">Novo Recebimento</h3>
                             </div>
-                            <div className="p-8">
-                                {tab === 'recebimento' ? (
-                                    <form onSubmit={addReceipt} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-                                        <div className="space-y-1">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Valor Bruto</label>
-                                            <input name="val" type="number" step="0.01" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold" required placeholder="0,00" />
-                                        </div>
-                                        <div className="space-y-1">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Médico/Profissional</label>
-                                            <select name="prof" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold" required>
-                                                <option value="">Selecione...</option>
-                                                {data.professionals.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                                            </select>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Atendimento</label>
-                                            <select name="service" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold">
-                                                <option value="Consulta">Consulta</option>
-                                                <option value="Procedimento">Procedimento</option>
-                                                <option value="Retorno">Retorno</option>
-                                                <option value="Cirurgia">Cirurgia</option>
-                                            </select>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Meio Pgto</label>
-                                            <select name="method" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold">
-                                                <option value="PIX">PIX</option>
-                                                <option value="Dinheiro">Dinheiro</option>
-                                                <option value="Cartão">Cartão</option>
-                                                <option value="Unimed">Unimed</option>
-                                            </select>
-                                        </div>
-                                        <div className="flex items-end">
-                                            <button type="submit" className="w-full py-4 bg-emerald-600 text-white font-black rounded-2xl shadow-lg uppercase text-xs tracking-widest hover:bg-emerald-700 transition-all">Salvar</button>
-                                        </div>
-                                    </form>
-                                ) : (
-                                    <div className="text-center py-10">
-                                        <p className="text-slate-400 font-bold italic">Módulo de despesas em desenvolvimento...</p>
-                                    </div>
-                                )}
-                            </div>
+                            <form onSubmit={handleAddReceipt} className="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                                <input name="val" type="number" step="0.01" placeholder="Valor R$" className="p-4 bg-slate-50 border rounded-2xl font-bold" required />
+                                <select name="prof" className="p-4 bg-slate-50 border rounded-2xl font-bold" required>
+                                    <option value="">Selecione Médico</option>
+                                    {professionals.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                </select>
+                                <select name="service" className="p-4 bg-slate-50 border rounded-2xl font-bold">
+                                    <option value="Consulta">Consulta</option>
+                                    <option value="Procedimento">Procedimento</option>
+                                    <option value="Retorno">Retorno</option>
+                                    <option value="Cirurgia">Cirurgia</option>
+                                </select>
+                                <select name="method" className="p-4 bg-slate-50 border rounded-2xl font-bold">
+                                    <option value="PIX">PIX</option>
+                                    <option value="Dinheiro">Dinheiro</option>
+                                    <option value="Cartão">Cartão</option>
+                                    <option value="Unimed">Unimed</option>
+                                </select>
+                                <button type="submit" className="bg-emerald-600 text-white font-black py-4 rounded-2xl shadow-md hover:bg-emerald-700 uppercase text-xs tracking-widest">Salvar</button>
+                            </form>
                         </section>
 
-                        {/* Histórico - ORDEM SOLICITADA: DATA, HORA, PROFISSIONAL, VALOR BRUTO, ATENDIMENTO */}
-                        <section className="bg-white rounded-[2.5rem] shadow-sm border overflow-hidden">
-                            <div className="p-8 border-b bg-slate-50/50 flex justify-between items-center">
-                                <h3 className="font-black text-slate-800 uppercase tracking-tighter">Histórico de Recebimentos</h3>
+                        {/* Histórico - ORDEM: DATA | HORA | PROFISSIONAL | VALOR BRUTO | ATENDIMENTO */}
+                        <section className="bg-white rounded-[2rem] border shadow-sm overflow-hidden">
+                            <div className="p-6 border-b bg-slate-50 flex justify-between items-center">
+                                <h3 className="font-black text-slate-800 uppercase text-xs">Histórico de Recebimentos</h3>
                             </div>
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-left border-collapse min-w-[900px]">
-                                    <thead>
-                                        <tr className="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                            <th className="px-8 py-5">DATA</th>
-                                            <th className="px-8 py-5">HORA</th>
-                                            <th className="px-8 py-5">PROFISSIONAL</th>
-                                            <th className="px-8 py-5">VALOR BRUTO</th>
-                                            <th className="px-8 py-5">ATENDIMENTO</th>
-                                            <th className="px-8 py-5">PAGAMENTO</th>
-                                            <th className="px-8 py-5 text-emerald-600">LÍQ. CLÍNICA</th>
-                                            <th className="px-8 py-5"></th>
+                            <div className="overflow-x-auto no-scrollbar">
+                                <table className="w-full text-left min-w-[800px]">
+                                    <thead className="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                        <tr>
+                                            <th className="px-6 py-4">DATA</th>
+                                            <th className="px-6 py-4">HORA</th>
+                                            <th className="px-6 py-4">PROFISSIONAL</th>
+                                            <th className="px-6 py-4">VALOR BRUTO</th>
+                                            <th className="px-6 py-4">ATENDIMENTO</th>
+                                            <th className="px-6 py-4 text-emerald-600">LÍQ. CLÍNICA</th>
+                                            <th className="px-6 py-4">AÇÕES</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-slate-50">
-                                        {dailyRecs.length === 0 ? (
-                                            <tr><td colSpan={8} className="p-20 text-center text-slate-300 font-black italic">Sem registros para esta data.</td></tr>
+                                    <tbody className="divide-y divide-slate-100 text-sm">
+                                        {dailyData.list.length === 0 ? (
+                                            <tr><td colSpan={7} className="p-20 text-center text-slate-300 font-bold italic">Nenhum registro encontrado.</td></tr>
                                         ) : (
-                                            dailyRecs.map(r => (
-                                                <tr key={r.id} className="hover:bg-slate-50 transition-colors text-sm">
-                                                    <td className="px-8 py-5 font-bold text-slate-600">{new Date(r.date).toLocaleDateString('pt-BR')}</td>
-                                                    <td className="px-8 py-5 font-black text-blue-600">{r.date.split('T')[1]?.substring(0,5)}</td>
-                                                    <td className="px-8 py-5 font-black text-slate-800">{r.profName}</td>
-                                                    <td className="px-8 py-5 font-black text-lg">R$ {r.gross.toFixed(2)}</td>
-                                                    <td className="px-8 py-5">
-                                                        <span className="px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full text-[10px] font-black uppercase tracking-tighter">{r.service}</span>
+                                            dailyData.list.map(r => (
+                                                <tr key={r.id} className="hover:bg-slate-50 transition-colors">
+                                                    <td className="px-6 py-4 font-bold text-slate-500">{new Date(r.date).toLocaleDateString('pt-BR')}</td>
+                                                    <td className="px-6 py-4 font-black text-blue-600">{r.date.split('T')[1]?.substring(0,5)}</td>
+                                                    <td className="px-6 py-4 font-black text-slate-800">{r.profName}</td>
+                                                    <td className="px-6 py-4 font-black">R$ {r.gross.toFixed(2)}</td>
+                                                    <td className="px-6 py-4">
+                                                        <span className="bg-indigo-50 text-indigo-700 px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-tighter">{r.service}</span>
                                                     </td>
-                                                    <td className="px-8 py-5 font-bold text-slate-400 text-[10px] uppercase">{r.method}</td>
-                                                    <td className="px-8 py-5 font-black text-emerald-600">R$ {r.net.toFixed(2)}</td>
-                                                    <td className="px-8 py-5">
-                                                        <button onClick={() => { if(confirm("Excluir?")) setData(prev => ({...prev, receipts: prev.receipts.filter(x => x.id !== r.id)})) }} className="text-slate-300 hover:text-red-500 transition-colors text-lg">🗑️</button>
+                                                    <td className="px-6 py-4 font-black text-emerald-600">R$ {r.net.toFixed(2)}</td>
+                                                    <td className="px-6 py-4">
+                                                        <button onClick={() => { if(confirm("Excluir?")) setReceipts(prev => prev.filter(x => x.id !== r.id)) }} className="text-slate-300 hover:text-red-500">🗑️</button>
                                                     </td>
                                                 </tr>
                                             ))
@@ -295,29 +297,25 @@
                             </div>
                         </section>
 
-                        {/* Botões de Ação */}
-                        <div className="flex flex-wrap gap-4 justify-center py-10">
-                            <button onClick={() => setActiveModal('prof')} className="px-8 py-4 bg-indigo-600 text-white font-black rounded-2xl shadow-xl hover:scale-105 transition-all uppercase text-xs tracking-widest">+ Profissional</button>
-                            <button onClick={() => { if(confirm("Deseja apagar TODOS os dados?")) { localStorage.removeItem(STORAGE_KEY); location.reload(); } }} className="px-8 py-4 bg-rose-100 text-rose-600 font-black rounded-2xl shadow-sm hover:bg-rose-600 hover:text-white transition-all uppercase text-xs tracking-widest">Limpar Banco</button>
+                        <div className="flex justify-center gap-4 py-6">
+                            <button onClick={() => setActiveModal('prof')} className="px-8 py-4 bg-indigo-600 text-white font-black rounded-2xl shadow-xl uppercase text-xs tracking-widest">+ Médico</button>
+                            <button onClick={() => { if(confirm("Limpar todos os dados?")) { localStorage.clear(); location.reload(); } }} className="px-8 py-4 bg-slate-200 text-slate-500 font-black rounded-2xl uppercase text-xs tracking-widest">Limpar Banco</button>
                         </div>
                     </main>
 
-                    {/* Modal Novo Profissional */}
+                    {/* Modal Profissional */}
                     {activeModal === 'prof' && (
-                        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-md">
-                            <div className="bg-white rounded-[2.5rem] w-full max-w-sm p-10 shadow-2xl animate-in zoom-in duration-200">
-                                <div className="flex justify-between items-center mb-8">
-                                    <h2 className="text-2xl font-black text-indigo-700 tracking-tighter">Novo Profissional</h2>
-                                    <button onClick={() => setActiveModal(null)} className="text-3xl font-light text-slate-300">&times;</button>
-                                </div>
-                                <form onSubmit={addProf} className="space-y-4">
-                                    <input name="name" placeholder="Nome Completo" className="w-full p-4 border-2 border-slate-100 rounded-2xl font-bold" required />
-                                    <input name="spec" placeholder="Especialidade" className="w-full p-4 border-2 border-slate-100 rounded-2xl font-bold" required />
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+                            <div className="bg-white p-8 rounded-[2.5rem] w-full max-w-sm shadow-2xl animate-fade-in">
+                                <h2 className="text-xl font-black text-slate-800 mb-6 uppercase tracking-tight">Novo Médico</h2>
+                                <form onSubmit={handleAddProf} className="space-y-4">
+                                    <input name="name" placeholder="Nome do Médico" className="w-full p-4 border rounded-2xl font-bold" required />
                                     <div className="space-y-1">
                                         <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Comissão (%)</label>
-                                        <input name="perc" type="number" placeholder="100 para sem comissão" className="w-full p-4 border-2 border-slate-100 rounded-2xl font-black text-center text-2xl text-blue-600" defaultValue="100" required />
+                                        <input name="perc" type="number" placeholder="100 se não houver comissão" className="w-full p-4 border rounded-2xl font-black text-center text-blue-600" defaultValue="100" required />
                                     </div>
-                                    <button type="submit" className="w-full py-5 bg-indigo-600 text-white font-black rounded-2xl shadow-lg uppercase tracking-widest mt-4">Cadastrar</button>
+                                    <button type="submit" className="w-full py-4 bg-indigo-600 text-white font-black rounded-2xl shadow-lg">CADASTRAR</button>
+                                    <button type="button" onClick={() => setActiveModal(null)} className="w-full py-4 text-slate-400 font-bold uppercase text-[10px]">Cancelar</button>
                                 </form>
                             </div>
                         </div>
@@ -326,7 +324,7 @@
             );
         };
 
-        // --- COMPONENTE APP ---
+        // --- COMPONENTE APP (ROOT) ---
         const App = () => {
             const [auth, setAuth] = useState(false);
 
@@ -334,22 +332,21 @@
                 if (localStorage.getItem(AUTH_KEY) === 'true') setAuth(true);
             }, []);
 
-            const login = () => {
+            const handleLogin = () => {
                 localStorage.setItem(AUTH_KEY, 'true');
                 setAuth(true);
             };
 
-            const logout = () => {
+            const handleLogout = () => {
                 localStorage.removeItem(AUTH_KEY);
                 setAuth(false);
             };
 
-            return auth ? <Dashboard onLogout={logout} /> : <Login onLogin={login} />;
+            return auth ? <Dashboard onLogout={handleLogout} /> : <Login onLoginSuccess={handleLogin} />;
         };
 
-        // --- INICIALIZAÇÃO ---
-        const root = createRoot(document.getElementById('root'));
-        root.render(React.createElement(App));
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
     </script>
 </body>
 </html>
